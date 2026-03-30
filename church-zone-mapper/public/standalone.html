@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>SF Church Zone Mapper</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Tabs ── */
+    #tabs {
+      display: flex;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      border-bottom: 3px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab:hover { color: #f1f5f9; }
+    .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+
+    /* ── Shared toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+
+    .btn-blue   { background: #2563eb; color: #fff; }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-gray   { background: #334155; color: #cbd5e1; }
+    .btn-gray:hover { background: #475569; }
+    .btn-green  { background: #16a34a; color: #fff; }
+    .btn-green:hover { background: #15803d; }
+    .btn-red    { background: #7f1d1d; color: #fca5a5; }
+    .btn-red:hover { background: #991b1b; }
+
+    .label { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+
+    .brush-row { display: flex; align-items: center; gap: 6px; }
+    .brush-opt {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 2px solid #334155;
+      background: transparent;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s;
+    }
+    .brush-opt.selected { border-color: #2563eb; }
+    .brush-dot { border-radius: 50%; background: #60a5fa; }
+
+    .divider { width: 1px; height: 26px; background: #334155; flex-shrink: 0; }
+    .spacer  { flex: 1; }
+
+    /* ── Screens ── */
+    .screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .screen.active { display: flex; }
+
+    /* ── Map wrapper ── */
+    #map-wrap {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+    #map, #hmap { width: 100%; height: 100%; }
+
+    #draw-canvas {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      z-index: 400;
+    }
+    #draw-canvas.active {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    /* Floating badges */
+    #mode-badge {
+      display: none;
+      position: absolute; top: 12px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(37,99,235,0.92);
+      color: #fff;
+      padding: 5px 16px; border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+      z-index: 1000; pointer-events: none; white-space: nowrap;
+    }
+    #mode-badge.show { display: block; }
+
+    #hint {
+      position: absolute; bottom: 28px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15,23,42,0.88);
+      color: #94a3b8;
+      padding: 8px 18px; border-radius: 8px;
+      font-size: 13px; border: 1px solid #334155;
+      pointer-events: none; z-index: 1000; white-space: nowrap;
+    }
+
+    /* Heatmap stats */
+    #hmap-stats {
+      display: flex; gap: 20px; align-items: center;
+    }
+    .stat { text-align: center; }
+    .stat-val   { font-size: 18px; font-weight: 800; color: #f59e0b; line-height: 1; }
+    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* Legend */
+    #legend {
+      position: absolute; bottom: 24px; right: 12px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid #334155; border-radius: 10px;
+      padding: 12px 16px; z-index: 1000;
+    }
+    .legend-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 8px; }
+    .legend-bar { width: 160px; height: 12px; border-radius: 6px; background: linear-gradient(to right, #1e40af, #0ea5e9, #22c55e, #eab308, #ef4444); }
+    .legend-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; color: #64748b; }
+
+    /* Empty state */
+    #empty-msg {
+      display: none;
+      position: absolute; inset: 0;
+      align-items: center; justify-content: center;
+      flex-direction: column; pointer-events: none; z-index: 900;
+    }
+    #empty-msg.show { display: flex; }
+    .empty-box {
+      background: rgba(15,23,42,0.9); border: 1px solid #334155;
+      border-radius: 12px; padding: 28px 36px; text-align: center;
+    }
+    .empty-box h2 { font-size: 18px; color: #f1f5f9; margin-bottom: 8px; }
+    .empty-box p  { font-size: 14px; color: #64748b; }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 100px; left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      padding: 11px 22px; border-radius: 8px;
+      font-size: 14px; font-weight: 600;
+      z-index: 3000; opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.ok    { background: #16a34a; color: #fff; }
+    #toast.error { background: #dc2626; color: #fff; }
+
+    @media (max-width: 540px) {
+      .tab { padding: 10px 14px; font-size: 13px; }
+      .toolbar { gap: 7px; padding: 8px 10px; }
+      .btn { padding: 6px 10px; font-size: 12px; }
+      .label { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Tab switcher ── -->
+<div id="tabs">
+  <button class="tab active" onclick="switchTab('draw')">Draw Your Zone</button>
+  <button class="tab"        onclick="switchTab('heat')">View Heatmap</button>
+</div>
+
+<!-- ══ DRAW SCREEN ══ -->
+<div id="screen-draw" class="screen active">
+  <div class="toolbar">
+    <button class="btn btn-blue" id="drawBtn" onclick="enterDrawMode()">Start Drawing</button>
+    <button class="btn btn-gray" id="navBtn"  onclick="enterNavMode()" style="display:none">Navigate Map</button>
+
+    <div class="divider"></div>
+    <span class="label">Brush size:</span>
+    <div class="brush-row">
+      <button class="brush-opt"          onclick="setBrush(10,this)" title="Small">
+        <div class="brush-dot" style="width:7px;height:7px"></div>
+      </button>
+      <button class="brush-opt selected" onclick="setBrush(22,this)" title="Medium">
+        <div class="brush-dot" style="width:14px;height:14px"></div>
+      </button>
+      <button class="brush-opt"          onclick="setBrush(38,this)" title="Large">
+        <div class="brush-dot" style="width:22px;height:22px"></div>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn btn-gray"  id="clearBtn"  onclick="clearAll()"   disabled>Clear</button>
+    <button class="btn btn-green" id="submitBtn" onclick="saveZone()"   disabled>Submit Zone</button>
+  </div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <canvas id="draw-canvas"></canvas>
+    <div id="mode-badge">Draw Mode &mdash; drag to paint your zone</div>
+    <div id="hint">Click &ldquo;Start Drawing&rdquo; then drag to color your zone</div>
+  </div>
+</div>
+
+<!-- ══ HEATMAP SCREEN ══ -->
+<div id="screen-heat" class="screen">
+  <div class="toolbar">
+    <div id="hmap-stats">
+      <div class="stat">
+        <div class="stat-val" id="sub-count">0</div>
+        <div class="stat-label">Submissions</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="pt-count">0</div>
+        <div class="stat-label">Data points</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-gray" onclick="refreshHeatmap()">Refresh</button>
+    <button class="btn btn-red"  onclick="clearAllData()">Clear All Data</button>
+  </div>
+
+  <div style="position:relative;flex:1;overflow:hidden;">
+    <div id="hmap"></div>
+    <div id="legend">
+      <div class="legend-title">Willingness Density</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels"><span>Low</span><span>High</span></div>
+    </div>
+    <div id="empty-msg">
+      <div class="empty-box">
+        <h2>No submissions yet</h2>
+        <p>Draw and submit a zone first,<br>then come back here.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ── Libraries ── -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script>
+// ── Storage ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'sfChurchZoneSubmissions';
+
+function loadSubmissions() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveSubmission(points) {
+  const subs = loadSubmissions();
+  subs.push({ id: Date.now(), ts: new Date().toISOString(), points });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
+  return subs.length;
+}
+
+function clearSubmissions() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'draw') || (i === 1 && tab === 'heat'));
+  });
+  document.getElementById('screen-draw').classList.toggle('active', tab === 'draw');
+  document.getElementById('screen-heat').classList.toggle('active', tab === 'heat');
+
+  if (tab === 'heat') {
+    refreshHeatmap();
+    // Leaflet needs a size invalidation when its container appears
+    setTimeout(() => hmap.invalidateSize(), 50);
+  }
+}
+
+// ══ DRAW MAP ══════════════════════════════════════════════════════════════════
+const map = L.map('map', { center: [37.7749, -122.4194], zoom: 13 });
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+// Canvas overlay
+const mapWrap = document.getElementById('map-wrap');
+const canvas  = document.getElementById('draw-canvas');
+const ctx     = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width  = mapWrap.offsetWidth;
+  canvas.height = mapWrap.offsetHeight;
+  redrawFromPoints();
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// State
+let drawMode   = false;
+let isPainting = false;
+let brushSize  = 22;
+let lastPos    = null;
+let drawnPoints = [];
+let pointSet   = new Set();
+let hasPoints  = false;
+
+const BRUSH_COLOR = 'rgba(37, 99, 235, 0.38)';
+
+function setBrush(size, el) {
+  brushSize = size;
+  document.querySelectorAll('.brush-opt').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// Mode switching
+function enterDrawMode() {
+  drawMode = true;
+  map.dragging.disable(); map.touchZoom.disable();
+  map.doubleClickZoom.disable(); map.scrollWheelZoom.disable();
+  map.boxZoom.disable(); map.keyboard.disable();
+  if (map.tap) map.tap.disable();
+
+  canvas.classList.add('active');
+  document.getElementById('drawBtn').style.display = 'none';
+  document.getElementById('navBtn').style.display  = '';
+  document.getElementById('mode-badge').classList.add('show');
+  document.getElementById('hint').style.display = 'none';
+}
+
+function enterNavMode() {
+  drawMode = false; isPainting = false; lastPos = null;
+  map.dragging.enable(); map.touchZoom.enable();
+  map.doubleClickZoom.enable(); map.scrollWheelZoom.enable();
+  map.boxZoom.enable(); map.keyboard.enable();
+  if (map.tap) map.tap.enable();
+
+  canvas.classList.remove('active');
+  document.getElementById('drawBtn').style.display = '';
+  document.getElementById('navBtn').style.display  = 'none';
+  document.getElementById('mode-badge').classList.remove('show');
+  redrawFromPoints();
+}
+
+// Realign canvas when map moves
+map.on('moveend zoomend', () => { if (!drawMode) redrawFromPoints(); });
+
+// Painting
+function canvasPos(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return { x: clientX - r.left, y: clientY - r.top };
+}
+
+function paintStroke(x, y, fx, fy) {
+  ctx.beginPath();
+  ctx.moveTo(fx ?? x, fy ?? y);
+  ctx.lineTo(x, y);
+  ctx.strokeStyle = BRUSH_COLOR;
+  ctx.lineWidth   = brushSize * 2;
+  ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+function collectPoints(x, y, fx, fy) {
+  const dist  = fx != null ? Math.hypot(x - fx, y - fy) : 0;
+  const steps = Math.max(1, Math.ceil(dist / Math.max(4, brushSize / 2)));
+  for (let i = 0; i <= steps; i++) {
+    const sx = fx != null ? fx + (x - fx) * i / steps : x;
+    const sy = fy != null ? fy + (y - fy) * i / steps : y;
+    sampleBrush(sx, sy);
+  }
+}
+
+function sampleBrush(cx, cy) {
+  const step = Math.max(5, brushSize / 3);
+  for (let dx = -brushSize; dx <= brushSize; dx += step)
+    for (let dy = -brushSize; dy <= brushSize; dy += step)
+      if (dx*dx + dy*dy <= brushSize*brushSize) {
+        const ll  = map.containerPointToLatLng([cx+dx, cy+dy]);
+        const key = `${ll.lat.toFixed(4)},${ll.lng.toFixed(4)}`;
+        if (!pointSet.has(key)) { pointSet.add(key); drawnPoints.push([ll.lat, ll.lng]); }
+      }
+}
+
+function redrawFromPoints() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!drawnPoints.length) return;
+  ctx.beginPath();
+  drawnPoints.forEach(([lat, lng]) => {
+    const p = map.latLngToContainerPoint([lat, lng]);
+    ctx.moveTo(p.x, p.y);
+    ctx.arc(p.x, p.y, Math.max(3, brushSize / 3), 0, Math.PI * 2);
+  });
+  ctx.fillStyle = BRUSH_COLOR;
+  ctx.fill();
+}
+
+function startPaint(x, y) {
+  isPainting = true; hasPoints = true; lastPos = { x, y };
+  paintStroke(x, y, null, null); collectPoints(x, y, null, null);
+  updateButtons();
+}
+function continuePaint(x, y) {
+  if (!isPainting) return;
+  paintStroke(x, y, lastPos?.x, lastPos?.y);
+  collectPoints(x, y, lastPos?.x, lastPos?.y);
+  lastPos = { x, y };
+}
+function endPaint() { isPainting = false; lastPos = null; }
+
+// Mouse
+canvas.addEventListener('mousedown', e => {
+  if (!drawMode) return;
+  const p = canvasPos(e.clientX, e.clientY); startPaint(p.x, p.y);
+});
+canvas.addEventListener('mousemove', e => {
+  if (!drawMode || !isPainting) return;
+  const p = canvasPos(e.clientX, e.clientY); continuePaint(p.x, p.y);
+});
+canvas.addEventListener('mouseup',    endPaint);
+canvas.addEventListener('mouseleave', endPaint);
+
+// Touch
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault(); if (!drawMode) return;
+  const t = e.touches[0]; const p = canvasPos(t.clientX, t.clientY); startPaint(p.x, p.y);
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault(); if (!drawMode || !isPainting) return;
+  const t = e.touches[0]; const p = canvasPos(t.clientX, t.clientY); continuePaint(p.x, p.y);
+}, { passive: false });
+canvas.addEventListener('touchend',    endPaint);
+canvas.addEventListener('touchcancel', endPaint);
+
+function updateButtons() {
+  const has = hasPoints && drawnPoints.length > 0;
+  document.getElementById('clearBtn').disabled  = !has;
+  document.getElementById('submitBtn').disabled = !has;
+}
+
+function clearAll() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawnPoints = []; pointSet = new Set(); hasPoints = false;
+  updateButtons();
+}
+
+function saveZone() {
+  if (!drawnPoints.length) { showToast('Draw your zone first!', 'error'); return; }
+  const total = saveSubmission(drawnPoints);
+  showToast(`Saved! ${total} total submission${total === 1 ? '' : 's'}.`, 'ok');
+  clearAll();
+  if (drawMode) enterNavMode();
+}
+
+// ══ HEATMAP MAP ═══════════════════════════════════════════════════════════════
+const hmap = L.map('hmap', { center: [37.7749, -122.4194], zoom: 13 });
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(hmap);
+
+let heatLayer = null;
+
+function refreshHeatmap() {
+  const subs   = loadSubmissions();
+  const points = subs.flatMap(s => s.points);
+
+  document.getElementById('sub-count').textContent = subs.length.toLocaleString();
+  document.getElementById('pt-count').textContent  = points.length.toLocaleString();
+
+  if (heatLayer) { hmap.removeLayer(heatLayer); heatLayer = null; }
+
+  document.getElementById('empty-msg').classList.toggle('show', points.length === 0);
+
+  if (points.length > 0) {
+    heatLayer = L.heatLayer(points, {
+      radius: 22, blur: 14, maxZoom: 17,
+      gradient: { 0.0:'#1e3a8a', 0.2:'#0284c7', 0.4:'#22c55e', 0.65:'#eab308', 0.85:'#f97316', 1.0:'#ef4444' }
+    }).addTo(hmap);
+  }
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL submissions? This cannot be undone.')) return;
+  clearSubmissions();
+  if (heatLayer) { hmap.removeLayer(heatLayer); heatLayer = null; }
+  document.getElementById('sub-count').textContent = '0';
+  document.getElementById('pt-count').textContent  = '0';
+  document.getElementById('empty-msg').classList.add('show');
+  showToast('All data cleared.', 'ok');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  clearTimeout(toastTimer);
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+}
+</script>
+</body>
+</html>
