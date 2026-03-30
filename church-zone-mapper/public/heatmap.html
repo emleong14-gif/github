@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SF Church Zone — Heatmap</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      flex-shrink: 0;
+      z-index: 1000;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+    .title em { color: #f59e0b; font-style: normal; }
+
+    .divider {
+      width: 1px;
+      height: 26px;
+      background: #334155;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-refresh { background: #334155; color: #cbd5e1; }
+    .btn-refresh:hover { background: #475569; }
+    .btn-clear-all { background: #7f1d1d; color: #fca5a5; }
+    .btn-clear-all:hover { background: #991b1b; }
+
+    .back-link {
+      color: #94a3b8;
+      font-size: 13px;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .back-link:hover { color: #f1f5f9; }
+
+    .spacer { flex: 1; }
+
+    /* Stats panel */
+    #stats {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: #f59e0b;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    #map { flex: 1; }
+
+    /* Legend */
+    #legend {
+      position: fixed;
+      bottom: 28px;
+      right: 16px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 16px;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    .legend-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .legend-bar {
+      width: 160px;
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(to right, #1e40af, #0ea5e9, #22c55e, #eab308, #ef4444);
+    }
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    /* Loading overlay */
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(15,23,42,0.8);
+      z-index: 2000;
+      font-size: 15px;
+      color: #94a3b8;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #334155;
+      border-top-color: #f59e0b;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #empty-msg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+      z-index: 900;
+    }
+    #empty-msg.show { display: flex; }
+    .empty-box {
+      background: rgba(15,23,42,0.88);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 28px 36px;
+      text-align: center;
+    }
+    .empty-box h2 { font-size: 18px; color: #f1f5f9; margin-bottom: 8px; }
+    .empty-box p  { font-size: 14px; color: #64748b; }
+
+    #toast {
+      position: fixed;
+      top: 68px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      padding: 11px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 3000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.ok    { background: #16a34a; color: #fff; }
+    #toast.error { background: #dc2626; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span class="title">SF Church <em>Zone Heatmap</em></span>
+
+  <div class="divider"></div>
+
+  <div id="stats">
+    <div class="stat">
+      <div class="stat-value" id="count">—</div>
+      <div class="stat-label">Responses</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="point-count">—</div>
+      <div class="stat-label">Data points</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <button class="btn btn-refresh" onclick="loadHeatmap()">Refresh</button>
+  <button class="btn btn-clear-all" onclick="clearAllData()">Clear All Data</button>
+
+  <span class="spacer"></span>
+  <a class="back-link" href="/">&larr; Back to Drawing</a>
+</div>
+
+<div id="map"></div>
+
+<div id="legend">
+  <div class="legend-title">Willingness Density</div>
+  <div class="legend-bar"></div>
+  <div class="legend-labels">
+    <span>Low</span>
+    <span>High</span>
+  </div>
+</div>
+
+<div id="empty-msg">
+  <div class="empty-box">
+    <h2>No submissions yet</h2>
+    <p>Have people draw their zones on the main page,<br>then refresh to see the heatmap.</p>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Loading heatmap...</span>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script>
+// ── Map ───────────────────────────────────────────────────────────────────────
+const map = L.map('map', {
+  center: [37.7749, -122.4194],
+  zoom: 13,
+  zoomControl: true,
+});
+
+// Slightly muted base tiles so heatmap pops
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+let heatLayer = null;
+
+// ── Load heatmap ──────────────────────────────────────────────────────────────
+async function loadHeatmap() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('empty-msg').classList.remove('show');
+
+  try {
+    const res  = await fetch('/api/submissions');
+    const data = await res.json();
+
+    // Update stats
+    document.getElementById('count').textContent       = data.totalSubmissions.toLocaleString();
+    document.getElementById('point-count').textContent = data.points.length.toLocaleString();
+
+    // Remove existing heat layer
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+
+    if (data.points.length === 0) {
+      document.getElementById('empty-msg').classList.add('show');
+    } else {
+      heatLayer = L.heatLayer(data.points, {
+        radius: 22,
+        blur: 14,
+        maxZoom: 17,
+        max: 1.0,
+        gradient: {
+          0.0: '#1e3a8a',
+          0.2: '#0284c7',
+          0.4: '#22c55e',
+          0.65: '#eab308',
+          0.85: '#f97316',
+          1.0: '#ef4444'
+        }
+      }).addTo(map);
+    }
+  } catch (err) {
+    showToast('Failed to load data.', 'error');
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+// ── Clear all data ─────────────────────────────────────────────────────────────
+async function clearAllData() {
+  if (!confirm('Delete ALL submissions? This cannot be undone.')) return;
+  try {
+    await fetch('/api/submissions', { method: 'DELETE' });
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    document.getElementById('count').textContent       = '0';
+    document.getElementById('point-count').textContent = '0';
+    document.getElementById('empty-msg').classList.add('show');
+    showToast('All data cleared.', 'ok');
+  } catch {
+    showToast('Error clearing data.', 'error');
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  clearTimeout(toastTimer);
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadHeatmap();
+</script>
+</body>
+</html>

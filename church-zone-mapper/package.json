@@ -1,0 +1,12 @@
+{
+  "name": "church-zone-mapper",
+  "version": "1.0.0",
+  "description": "SF church attendance zone drawing and heatmap tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
