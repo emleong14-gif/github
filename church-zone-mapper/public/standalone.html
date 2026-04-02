@@ -484,18 +484,33 @@ function initHmap() {
 
 function refreshHeatmap() {
   if (!hmap) return;
-  const subs   = loadSubmissions();
-  const points = subs.flatMap(s => s.points);
+  const subs = loadSubmissions();
 
   document.getElementById('sub-count').textContent = subs.length.toLocaleString();
-  document.getElementById('pt-count').textContent  = points.length.toLocaleString();
 
   if (heatLayer) { hmap.removeLayer(heatLayer); heatLayer = null; }
-  document.getElementById('empty-msg').classList.toggle('show', points.length === 0);
+  document.getElementById('empty-msg').classList.toggle('show', subs.length === 0);
 
-  if (points.length > 0) {
-    heatLayer = L.heatLayer(points, {
-      radius: 22, blur: 14, maxZoom: 17,
+  if (subs.length > 0) {
+    // Count how many submissions cover each grid cell — gives true density
+    const counts = new Map();
+    for (const sub of subs) {
+      for (const [lat, lng] of sub.points) {
+        const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+
+    document.getElementById('pt-count').textContent = counts.size.toLocaleString();
+
+    const maxCount = Math.max(...counts.values());
+    const heatPoints = Array.from(counts.entries()).map(([key, count]) => {
+      const [lat, lng] = key.split(',').map(Number);
+      return [lat, lng, count / maxCount]; // weight 0–1 relative to busiest cell
+    });
+
+    heatLayer = L.heatLayer(heatPoints, {
+      radius: 22, blur: 14, maxZoom: 17, max: 1.0,
       gradient: { 0.0:'#1e3a8a', 0.2:'#0284c7', 0.4:'#22c55e', 0.65:'#eab308', 0.85:'#f97316', 1.0:'#ef4444' }
     }).addTo(hmap);
   }
