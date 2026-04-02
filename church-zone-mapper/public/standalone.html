@@ -18,7 +18,6 @@
       overflow: hidden;
     }
 
-    /* ── Tabs ── */
     #tabs {
       display: flex;
       background: #1e293b;
@@ -39,7 +38,6 @@
     .tab:hover { color: #f1f5f9; }
     .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
 
-    /* ── Shared toolbar ── */
     .toolbar {
       display: flex;
       align-items: center;
@@ -63,18 +61,16 @@
     }
     .btn:active { transform: scale(0.97); }
     .btn:disabled { opacity: 0.4; pointer-events: none; }
-
-    .btn-blue   { background: #2563eb; color: #fff; }
-    .btn-blue:hover { background: #1d4ed8; }
-    .btn-gray   { background: #334155; color: #cbd5e1; }
-    .btn-gray:hover { background: #475569; }
-    .btn-green  { background: #16a34a; color: #fff; }
+    .btn-blue  { background: #2563eb; color: #fff; }
+    .btn-blue:hover  { background: #1d4ed8; }
+    .btn-gray  { background: #334155; color: #cbd5e1; }
+    .btn-gray:hover  { background: #475569; }
+    .btn-green { background: #16a34a; color: #fff; }
     .btn-green:hover { background: #15803d; }
-    .btn-red    { background: #7f1d1d; color: #fca5a5; }
-    .btn-red:hover { background: #991b1b; }
+    .btn-red   { background: #7f1d1d; color: #fca5a5; }
+    .btn-red:hover   { background: #991b1b; }
 
     .label { font-size: 12px; color: #94a3b8; white-space: nowrap; }
-
     .brush-row { display: flex; align-items: center; gap: 6px; }
     .brush-opt {
       width: 30px; height: 30px;
@@ -87,11 +83,8 @@
     }
     .brush-opt.selected { border-color: #2563eb; }
     .brush-dot { border-radius: 50%; background: #60a5fa; }
-
     .divider { width: 1px; height: 26px; background: #334155; flex-shrink: 0; }
-    .spacer  { flex: 1; }
 
-    /* ── Screens ── */
     .screen {
       display: none;
       flex: 1;
@@ -101,25 +94,24 @@
     }
     .screen.active { display: flex; }
 
-    /* ── Map wrapper ── */
+    /* Draw screen map area */
     #map-wrap {
       position: relative;
       flex: 1;
       overflow: hidden;
     }
-    #map, #hmap { width: 100%; height: 100%; }
+    #map { width: 100%; height: 100%; }
 
     #draw-canvas {
       position: absolute; inset: 0;
       pointer-events: none;
-      z-index: 400;
+      z-index: 9999;
     }
     #draw-canvas.active {
       pointer-events: auto;
       cursor: crosshair;
     }
 
-    /* Floating badges */
     #mode-badge {
       display: none;
       position: absolute; top: 12px; left: 50%;
@@ -128,7 +120,7 @@
       color: #fff;
       padding: 5px 16px; border-radius: 20px;
       font-size: 13px; font-weight: 600;
-      z-index: 1000; pointer-events: none; white-space: nowrap;
+      z-index: 10000; pointer-events: none; white-space: nowrap;
     }
     #mode-badge.show { display: block; }
 
@@ -139,18 +131,22 @@
       color: #94a3b8;
       padding: 8px 18px; border-radius: 8px;
       font-size: 13px; border: 1px solid #334155;
-      pointer-events: none; z-index: 1000; white-space: nowrap;
+      pointer-events: none; z-index: 10000; white-space: nowrap;
     }
 
-    /* Heatmap stats */
-    #hmap-stats {
-      display: flex; gap: 20px; align-items: center;
+    /* Heatmap screen */
+    #hmap-wrap {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
     }
+    #hmap { position: absolute; inset: 0; }
+
+    #hmap-stats { display: flex; gap: 20px; align-items: center; }
     .stat { text-align: center; }
     .stat-val   { font-size: 18px; font-weight: 800; color: #f59e0b; line-height: 1; }
     .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 
-    /* Legend */
     #legend {
       position: absolute; bottom: 24px; right: 12px;
       background: rgba(15,23,42,0.9);
@@ -161,12 +157,11 @@
     .legend-bar { width: 160px; height: 12px; border-radius: 6px; background: linear-gradient(to right, #1e40af, #0ea5e9, #22c55e, #eab308, #ef4444); }
     .legend-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; color: #64748b; }
 
-    /* Empty state */
     #empty-msg {
       display: none;
       position: absolute; inset: 0;
       align-items: center; justify-content: center;
-      flex-direction: column; pointer-events: none; z-index: 900;
+      pointer-events: none; z-index: 900;
     }
     #empty-msg.show { display: flex; }
     .empty-box {
@@ -176,13 +171,12 @@
     .empty-box h2 { font-size: 18px; color: #f1f5f9; margin-bottom: 8px; }
     .empty-box p  { font-size: 14px; color: #64748b; }
 
-    /* Toast */
     #toast {
       position: fixed; top: 100px; left: 50%;
       transform: translateX(-50%) translateY(-8px);
       padding: 11px 22px; border-radius: 8px;
       font-size: 14px; font-weight: 600;
-      z-index: 3000; opacity: 0; pointer-events: none;
+      z-index: 9999; opacity: 0; pointer-events: none;
       transition: opacity 0.25s, transform 0.25s;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -199,18 +193,16 @@
 </head>
 <body>
 
-<!-- ── Tab switcher ── -->
 <div id="tabs">
   <button class="tab active" onclick="switchTab('draw')">Draw Your Zone</button>
   <button class="tab"        onclick="switchTab('heat')">View Heatmap</button>
 </div>
 
-<!-- ══ DRAW SCREEN ══ -->
+<!-- DRAW SCREEN -->
 <div id="screen-draw" class="screen active">
   <div class="toolbar">
     <button class="btn btn-blue" id="drawBtn" onclick="enterDrawMode()">Start Drawing</button>
     <button class="btn btn-gray" id="navBtn"  onclick="enterNavMode()" style="display:none">Navigate Map</button>
-
     <div class="divider"></div>
     <span class="label">Brush size:</span>
     <div class="brush-row">
@@ -224,12 +216,10 @@
         <div class="brush-dot" style="width:22px;height:22px"></div>
       </button>
     </div>
-
     <div class="divider"></div>
-    <button class="btn btn-gray"  id="clearBtn"  onclick="clearAll()"   disabled>Clear</button>
-    <button class="btn btn-green" id="submitBtn" onclick="saveZone()"   disabled>Submit Zone</button>
+    <button class="btn btn-gray"  id="clearBtn"  onclick="clearAll()"  disabled>Clear</button>
+    <button class="btn btn-green" id="submitBtn" onclick="saveZone()" disabled>Submit Zone</button>
   </div>
-
   <div id="map-wrap">
     <div id="map"></div>
     <canvas id="draw-canvas"></canvas>
@@ -238,7 +228,7 @@
   </div>
 </div>
 
-<!-- ══ HEATMAP SCREEN ══ -->
+<!-- HEATMAP SCREEN -->
 <div id="screen-heat" class="screen">
   <div class="toolbar">
     <div id="hmap-stats">
@@ -255,8 +245,7 @@
     <button class="btn btn-gray" onclick="refreshHeatmap()">Refresh</button>
     <button class="btn btn-red"  onclick="clearAllData()">Clear All Data</button>
   </div>
-
-  <div style="position:relative;flex:1;overflow:hidden;">
+  <div id="hmap-wrap">
     <div id="hmap"></div>
     <div id="legend">
       <div class="legend-title">Willingness Density</div>
@@ -274,7 +263,6 @@
 
 <div id="toast"></div>
 
-<!-- ── Libraries ── -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script>
@@ -285,17 +273,13 @@ function loadSubmissions() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
   catch { return []; }
 }
-
 function saveSubmission(points) {
   const subs = loadSubmissions();
   subs.push({ id: Date.now(), ts: new Date().toISOString(), points });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
   return subs.length;
 }
-
-function clearSubmissions() {
-  localStorage.removeItem(STORAGE_KEY);
-}
+function clearSubmissions() { localStorage.removeItem(STORAGE_KEY); }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
@@ -306,24 +290,36 @@ function switchTab(tab) {
   document.getElementById('screen-heat').classList.toggle('active', tab === 'heat');
 
   if (tab === 'heat') {
-    refreshHeatmap();
-    // Leaflet needs a size invalidation when its container appears
-    setTimeout(() => hmap.invalidateSize(), 50);
+    // Init hmap lazily — only after its container is visible
+    initHmap();
+    setTimeout(() => {
+      hmap.invalidateSize();
+      refreshHeatmap();
+    }, 100);
   }
 }
 
 // ══ DRAW MAP ══════════════════════════════════════════════════════════════════
 const map = L.map('map', { center: [37.7749, -122.4194], zoom: 13 });
-
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
   subdomains: 'abcd', maxZoom: 19
 }).addTo(map);
 
-// Canvas overlay
 const mapWrap = document.getElementById('map-wrap');
 const canvas  = document.getElementById('draw-canvas');
 const ctx     = canvas.getContext('2d');
+
+// State — declared BEFORE any function calls that reference them
+let drawMode    = false;
+let isPainting  = false;
+let brushSize   = 22;
+let lastPos     = null;
+let drawnPoints = [];
+let pointSet    = new Set();
+let hasPoints   = false;
+
+const BRUSH_COLOR = 'rgba(37, 99, 235, 0.38)';
 
 function resizeCanvas() {
   canvas.width  = mapWrap.offsetWidth;
@@ -333,31 +329,19 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// State
-let drawMode   = false;
-let isPainting = false;
-let brushSize  = 22;
-let lastPos    = null;
-let drawnPoints = [];
-let pointSet   = new Set();
-let hasPoints  = false;
-
-const BRUSH_COLOR = 'rgba(37, 99, 235, 0.38)';
-
 function setBrush(size, el) {
   brushSize = size;
   document.querySelectorAll('.brush-opt').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
 }
 
-// Mode switching
 function enterDrawMode() {
   drawMode = true;
+  document.getElementById('map').style.pointerEvents = 'none';
   map.dragging.disable(); map.touchZoom.disable();
   map.doubleClickZoom.disable(); map.scrollWheelZoom.disable();
   map.boxZoom.disable(); map.keyboard.disable();
   if (map.tap) map.tap.disable();
-
   canvas.classList.add('active');
   document.getElementById('drawBtn').style.display = 'none';
   document.getElementById('navBtn').style.display  = '';
@@ -367,11 +351,11 @@ function enterDrawMode() {
 
 function enterNavMode() {
   drawMode = false; isPainting = false; lastPos = null;
+  document.getElementById('map').style.pointerEvents = '';
   map.dragging.enable(); map.touchZoom.enable();
   map.doubleClickZoom.enable(); map.scrollWheelZoom.enable();
   map.boxZoom.enable(); map.keyboard.enable();
   if (map.tap) map.tap.enable();
-
   canvas.classList.remove('active');
   document.getElementById('drawBtn').style.display = '';
   document.getElementById('navBtn').style.display  = 'none';
@@ -379,13 +363,11 @@ function enterNavMode() {
   redrawFromPoints();
 }
 
-// Realign canvas when map moves
 map.on('moveend zoomend', () => { if (!drawMode) redrawFromPoints(); });
 
-// Painting
-function canvasPos(clientX, clientY) {
+function canvasPos(cx, cy) {
   const r = canvas.getBoundingClientRect();
-  return { x: clientX - r.left, y: clientY - r.top };
+  return { x: cx - r.left, y: cy - r.top };
 }
 
 function paintStroke(x, y, fx, fy) {
@@ -445,7 +427,6 @@ function continuePaint(x, y) {
 }
 function endPaint() { isPainting = false; lastPos = null; }
 
-// Mouse
 canvas.addEventListener('mousedown', e => {
   if (!drawMode) return;
   const p = canvasPos(e.clientX, e.clientY); startPaint(p.x, p.y);
@@ -457,7 +438,6 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('mouseup',    endPaint);
 canvas.addEventListener('mouseleave', endPaint);
 
-// Touch
 canvas.addEventListener('touchstart', e => {
   e.preventDefault(); if (!drawMode) return;
   const t = e.touches[0]; const p = canvasPos(t.clientX, t.clientY); startPaint(p.x, p.y);
@@ -489,17 +469,21 @@ function saveZone() {
   if (drawMode) enterNavMode();
 }
 
-// ══ HEATMAP MAP ═══════════════════════════════════════════════════════════════
-const hmap = L.map('hmap', { center: [37.7749, -122.4194], zoom: 13 });
-
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-  subdomains: 'abcd', maxZoom: 19
-}).addTo(hmap);
-
+// ══ HEATMAP MAP — lazy init ═══════════════════════════════════════════════════
+let hmap      = null;
 let heatLayer = null;
 
+function initHmap() {
+  if (hmap) return; // already initialized
+  hmap = L.map('hmap', { center: [37.7749, -122.4194], zoom: 13 });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(hmap);
+}
+
 function refreshHeatmap() {
+  if (!hmap) return;
   const subs   = loadSubmissions();
   const points = subs.flatMap(s => s.points);
 
@@ -507,7 +491,6 @@ function refreshHeatmap() {
   document.getElementById('pt-count').textContent  = points.length.toLocaleString();
 
   if (heatLayer) { hmap.removeLayer(heatLayer); heatLayer = null; }
-
   document.getElementById('empty-msg').classList.toggle('show', points.length === 0);
 
   if (points.length > 0) {
@@ -521,7 +504,7 @@ function refreshHeatmap() {
 function clearAllData() {
   if (!confirm('Delete ALL submissions? This cannot be undone.')) return;
   clearSubmissions();
-  if (heatLayer) { hmap.removeLayer(heatLayer); heatLayer = null; }
+  if (hmap && heatLayer) { hmap.removeLayer(heatLayer); heatLayer = null; }
   document.getElementById('sub-count').textContent = '0';
   document.getElementById('pt-count').textContent  = '0';
   document.getElementById('empty-msg').classList.add('show');
