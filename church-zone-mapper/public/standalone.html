@@ -506,11 +506,14 @@ function refreshHeatmap() {
     const maxCount = Math.max(...counts.values());
     const heatPoints = Array.from(counts.entries()).map(([key, count]) => {
       const [lat, lng] = key.split(',').map(Number);
-      return [lat, lng, count / maxCount]; // weight 0–1 relative to busiest cell
+      // sqrt scale so low counts spread across the color range; raw count as weight
+      return [lat, lng, Math.sqrt(count)];
     });
 
     heatLayer = L.heatLayer(heatPoints, {
-      radius: 22, blur: 14, maxZoom: 17, max: 1.0,
+      radius: 22, blur: 14, maxZoom: 17,
+      // max = sqrt of busiest cell * 1.5 so red only appears at true hotspots
+      max: Math.sqrt(maxCount) * 1.5,
       gradient: { 0.0:'#1e3a8a', 0.2:'#0284c7', 0.4:'#22c55e', 0.65:'#eab308', 0.85:'#f97316', 1.0:'#ef4444' }
     }).addTo(hmap);
   }
